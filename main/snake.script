@@ -1,0 +1,142 @@
+local scoreUp 25;
+local speed = 4;
+
+local function spawn_food(self)
+	local x, y, w, h = tilemap.get_bounds("#grid");
+	local spawned = false;
+	while(not spawned) do
+		local xs = math.random(2, w - 1);
+		local ys = math.random(2, h - 1);
+
+		local tile = tilemap.get_tile("#grid", "layer1", xs, ys);
+		if tile == 0 then
+			self.food = {x = xs, y = ys};
+			tilemap.set_tile("#grid", "layer1", xs, ys, 3);
+			spawned = true;
+		end	
+	end
+end
+
+local function save_level(self)
+	local x, y, w, h = tilemap.get_bounds("#grid");
+	for i = y, h do
+		yv = i;
+		for j = x, w do
+			xv = j;
+			local t = tilemap.get_tile("#grid", "layer1", xv, yv);
+			table.insert(self.level, { x = xv, y = yv, tile = t});
+		end
+	end	
+end
+
+function init(self)
+	msg.post(".", "acquire_input_focus");
+
+	self.level = {};
+	save_level(self);
+
+	self.segments = {
+		{x = 13, y = 13},
+		{x = 14, y = 13},
+		{x = 15, y = 13}
+	};
+	self.dir = {x = -1, y = 0};
+	self.dirQueue = {};
+	self.speed = speed;
+
+	self.timer = 0;
+
+	self.score = 0;
+	self.scoreUp = scoreUp;
+	label.set_text("#score", "Score: " .. tostring(self.score));
+	
+	self.alive = true;
+	
+	math.randomseed(socket.gettime());
+
+	spawn_food(self);
+end
+
+function update(self, dt)
+	self.timer = self.timer + dt;
+	if(self.timer >= 1.0 / self.speed and self.alive) then
+		local newDir = table.remove(self.dirQueue, 1);
+		if(newDir) then
+			local opposite = newDir.x == -self.dir.x or newDir.y == -self.dir.y;
+			if not opposite then
+				self.dir = newDir;
+			end
+		end
+		local head = self.segments[#self.segments];
+		local newHead = {x = head.x + self.dir.x, y = head.y + self.dir.y};
+
+		table.insert(self.segments, newHead);
+
+		--Check what tile the head moved to
+		local tile = tilemap.get_tile("#grid", "layer1", newHead.x, newHead.y);
+		--If the head moved to itself or a wall
+		if tile == 2 or tile == 4 then
+			--Then die
+			self.alive = false;
+		elseif tile == 3 then
+			--If it ate fruit then increase food and spawn more fruit
+			self.speed = self.speed + 1;
+			self.score = self.score + self.scoreUp;
+			label.set_text("#score", "Score: " .. tostring(self.score));
+			spawn_food(self);
+		else
+			--Else move the tail
+			local tail = table.remove(self.segments, 1);
+			tilemap.set_tile("#grid", "layer1", tail.x, tail.y, 0);
+		end
+		
+		for i, s in ipairs(self.segments) do
+			tilemap.set_tile("#grid", "layer1", s.x, s.y, 2);
+		end
+
+		self.timer = 0;
+	end
+end
+
+function on_input(self, action_id, action)
+	--Movement
+	if(action_id == hash('up') and action.pressed) then
+		table.insert(self.dirQueue, {x = 0, y = 1});
+	elseif(action_id == hash('down') and action.pressed) then
+		table.insert(self.dirQueue, {x = 0, y = -1});
+	elseif(action_id == hash('left') and action.pressed) then
+		table.insert(self.dirQueue, {x = -1, y = 0});
+	elseif(action_id == hash('right') and action.pressed) then
+		table.insert(self.dirQueue, {x = 1, y = 0});
+	--Restart contact_point_response
+	elseif(action_id == hash('restart') and action.pressed) then
+		restart(self);
+	elseif(action_id == hash('restart') and action.pressed) then
+		restart(self);
+	end
+end
+
+function restart(self)
+	for i, t in ipairs(self.level) do
+		tilemap.set_tile("#grid", "layer1", t.x, t.y, t.tile);
+	end
+	
+	self.segments = {
+		{x = 13, y = 13},
+		{x = 14, y = 13},
+		{x = 15, y = 13}
+	};
+	self.dir = {x = -1, y = 0};
+	self.dirQueue = {};
+	self.speed = speed;
+
+	self.timer = 0;
+
+	self.score = 0;
+	
+	self.alive = true;
+
+	math.randomseed(socket.gettime());
+
+	spawn_food(self);
+end
