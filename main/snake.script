@@ -1,4 +1,4 @@
-local scoreUp 25;
+local scoreUp = 25;
 local speed = 4;
 
 local function spawn_food(self)

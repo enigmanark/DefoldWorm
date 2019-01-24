@@ -1,5 +1,6 @@
 [bootstrap]
 main_collection = /main/main.collectionc
+render = /orthographic/render/orthographic.renderc
 
 [script]
 shared_state = 1
@@ -10,4 +11,5 @@ height = 415
 
 [project]
 title = DefoldWorm
+dependencies = https://github.com/britzl/defold-orthographic/archive/master.zip
 
